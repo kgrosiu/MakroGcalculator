@@ -1,1 +1,1525 @@
+<!DOCTYPE html>
+<html lang="pl" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MakroFlow" />
+  <meta name="theme-color" content="#080c14" />
+  <title>MakroFlow — Kalkulator Kalorii & Makro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            slate: {
+              850: '#151e2e',
+              900: '#0f172a',
+              950: '#080c14',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #080c14;
+      color: #f1f5f9;
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(0.85);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500/30 selection:text-emerald-200 pb-24">
 
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 left-5 sm:left-auto z-50 transform translate-y-28 opacity-0 transition-all duration-300 pointer-events-none sm:max-w-sm">
+    <div class="bg-slate-800 border border-emerald-500/50 text-slate-100 px-4 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3">
+      <span id="toast-icon" class="text-emerald-400 text-lg shrink-0">✓</span>
+      <span id="toast-msg" class="text-xs sm:text-sm font-semibold leading-snug">Zapisano!</span>
+    </div>
+  </div>
+
+  <!-- Top Sticky Header -->
+  <header class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 flex items-center justify-center font-black text-slate-950 text-base shadow-lg shadow-emerald-500/20 shrink-0">
+          MF
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">MakroFlow</h1>
+            <span id="header-goal-badge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              Redukcja
+            </span>
+          </div>
+          <p class="text-[11px] sm:text-xs text-slate-400">
+            Kalkulator BMR/TDEE, Dziennik Makro & Postępy • Auto-zapis lokalny
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="openProfileModal()" class="text-xs font-bold px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer">
+          ⚙️ Profil & Cele
+        </button>
+        <button type="button" onclick="copyDaySummary()" class="text-xs font-bold px-3.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition shadow-lg shadow-emerald-500/20 cursor-pointer">
+          📋 Kopiuj dzień
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Profile / Onboarding Modal -->
+  <div id="profile-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl space-y-5 my-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Konfiguracja Kalkulatora</span>
+          <h2 class="text-lg sm:text-xl font-black text-white mt-0.5">Twoje parametry i cel</h2>
+          <p class="text-xs text-slate-400 mt-1">Wszystkie dane zapisują się wyłącznie lokalnie w Twojej przeglądarce.</p>
+        </div>
+        <button type="button" onclick="closeProfileModal()" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-base cursor-pointer">×</button>
+      </div>
+
+      <form onsubmit="saveProfileSettings(event)" class="space-y-4">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Płeć</label>
+            <select id="prof-sex" class="w-full bg-slate-850 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-white focus:outline-none focus:border-emerald-500">
+              <option value="male">Mężczyzna</option>
+              <option value="female">Kobieta</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Wiek (lata)</label>
+            <input id="prof-age" type="number" min="14" max="100" required
+              class="w-full bg-slate-850 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Wzrost (cm)</label>
+            <input id="prof-height" type="number" step="0.5" min="120" max="230" required
+              class="w-full bg-slate-850 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Tryb celu</label>
+            <select id="prof-goal-type" onchange="previewCalculatedTargets()" class="w-full bg-slate-850 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-emerald-300 focus:outline-none focus:border-emerald-500">
+              <option value="cut">Redukcja (-500 kcal)</option>
+              <option value="fast_cut">Mocna redukcja (-750 kcal)</option>
+              <option value="maintain">Utrzymanie wagi</option>
+              <option value="bulk">Budowa masy (+300 kcal)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Aktualna waga (kg)</label>
+            <input id="prof-weight" type="number" step="0.1" min="35" max="250" oninput="previewCalculatedTargets()" required
+              class="w-full bg-slate-850 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Waga docelowa (kg)</label>
+            <input id="prof-target-weight" type="number" step="0.1" min="35" max="250" required
+              class="w-full bg-slate-850 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Cel kroków dziennie</label>
+            <input id="prof-steps-goal" type="number" step="500" min="0" max="40000" oninput="previewCalculatedTargets()" required
+              class="w-full bg-slate-850 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-amber-300 focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+
+        <!-- Custom Calorie & Macro Override -->
+        <div class="bg-slate-850 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span class="text-xs font-bold text-white">Dzienne cele kalorii i makroskładników</span>
+              <p id="prof-tdee-hint" class="text-[11px] text-slate-400">Sugerowane TDEE: — kcal</p>
+            </div>
+            <button type="button" onclick="applySuggestedMacros()" class="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 cursor-pointer">
+              ↻ Przelicz automatycznie
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div>
+              <label class="block text-[11px] text-emerald-400 font-semibold mb-1">Limit Kcal</label>
+              <input id="prof-kcal-target" type="number" step="10" min="1000" max="6000" required
+                class="w-full bg-slate-900 border border-emerald-500/50 rounded-xl px-3 py-2 text-xs font-black text-white focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-cyan-400 font-semibold mb-1">Białko (g)</label>
+              <input id="prof-prot-target" type="number" step="1" min="30" max="400" required
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-amber-400 font-semibold mb-1">Węglowodany (g)</label>
+              <input id="prof-carb-target" type="number" step="1" min="10" max="800" required
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-rose-400 font-semibold mb-1">Tłuszcze (g)</label>
+              <input id="prof-fat-target" type="number" step="1" min="15" max="250" required
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-1">
+          <button type="button" onclick="closeProfileModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 cursor-pointer">
+            Anuluj
+          </button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold transition cursor-pointer">
+            Zapisz ustawienia
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-5 space-y-6">
+
+    <!-- Top Summary Strip -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+
+      <!-- Card 1: Current Weight -> Target Weight -->
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Masa Ciała</span>
+          <span id="weight-diff-badge" class="text-xs font-bold text-emerald-400">Do celu: 5.0 kg</span>
+        </div>
+        <div class="flex items-center gap-1.5 my-1">
+          <button type="button" onclick="adjustQuickWeight(-0.1)" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition cursor-pointer">-0.1</button>
+          <input id="quick-weight-input" type="number" step="0.1" min="35" max="250" oninput="onQuickWeightChange(this.value)"
+            class="w-24 text-center bg-slate-850 border border-slate-700 focus:border-emerald-500 focus:outline-none rounded-xl px-2 py-1 text-2xl font-black text-white" />
+          <button type="button" onclick="adjustQuickWeight(0.1)" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition cursor-pointer">+0.1</button>
+          <span class="text-xs text-slate-400 ml-1">kg → <strong id="target-weight-label" class="text-slate-200">70.0</strong></span>
+        </div>
+        <div class="mt-3 flex justify-between text-[11px] text-slate-400">
+          <span>BMR: <strong id="top-bmr-val" class="text-slate-200">1749 kcal</strong></span>
+          <button type="button" onclick="openProfileModal()" class="text-cyan-400 hover:underline font-semibold cursor-pointer">Edytuj cel</button>
+        </div>
+      </div>
+
+      <!-- Card 2: Daily Steps & TDEE -->
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Kroki & Spalanie (TDEE)</span>
+          <span id="top-steps-kcal" class="text-xs text-amber-400 font-bold">+294 kcal</span>
+        </div>
+        <div class="flex items-baseline justify-between my-1">
+          <div>
+            <span id="top-tdee-val" class="text-2xl sm:text-3xl font-black text-white">2568</span>
+            <span class="text-xs text-slate-400">kcal TDEE</span>
+          </div>
+          <span class="text-[11px] text-slate-400">Cel: <strong id="top-steps-goal-label" class="text-slate-200">8 000</strong></span>
+        </div>
+        <div class="mt-2 space-y-1.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-400">Kroki w wybranym dniu:</span>
+            <input id="quick-steps-input" type="number" step="100" min="0" max="50000" oninput="onQuickStepsChange(this.value)"
+              class="w-24 text-right bg-slate-850 border border-slate-700 focus:border-emerald-500 focus:outline-none rounded-lg px-2 py-1 font-bold text-amber-300" />
+          </div>
+          <div class="grid grid-cols-3 gap-1 text-[10px] font-bold">
+            <button type="button" onclick="onQuickStepsChange(5000)" class="py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">5 000</button>
+            <button type="button" onclick="onQuickStepsChange(8000)" class="py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 cursor-pointer">8 000</button>
+            <button type="button" onclick="onQuickStepsChange(10000)" class="py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 cursor-pointer">10 000</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Active Calorie Limit -->
+      <div class="bg-slate-900/95 border border-emerald-500/35 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Twój Budżet Kalorii</span>
+          <span id="balance-diff-badge" class="text-xs font-semibold px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-300">-500 kcal</span>
+        </div>
+        <div class="my-1 flex items-baseline gap-2">
+          <span id="top-kcal-limit" class="text-3xl font-black text-emerald-400">2068</span>
+          <span class="text-sm text-slate-400">kcal / dzień</span>
+        </div>
+        <p id="top-macro-split-text" class="text-xs text-slate-400 mt-2">
+          B: <strong class="text-cyan-400">150g</strong> • W: <strong class="text-amber-300">225g</strong> • T: <strong class="text-rose-300">63g</strong>
+        </p>
+      </div>
+
+      <!-- Card 4: Date Selector -->
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Wybrany Dzień</span>
+          <button type="button" onclick="jumpToToday()" class="text-xs font-bold text-emerald-400 hover:underline cursor-pointer">Dziś</button>
+        </div>
+        <div class="flex items-center gap-1.5 my-1">
+          <button type="button" onclick="shiftDate(-1)" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 cursor-pointer">←</button>
+          <input id="active-date-input" type="date" onchange="onDateChange(this.value)"
+            class="w-full bg-slate-850 border border-slate-700 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-white" />
+          <button type="button" onclick="shiftDate(1)" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 cursor-pointer">→</button>
+        </div>
+        <p id="human-date-label" class="text-xs text-slate-400 mt-2 truncate">—</p>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="flex gap-2 overflow-x-auto pb-1 border-b border-slate-800/80">
+      <button type="button" onclick="switchTab('diary')" id="tab-btn-diary" class="tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 transition cursor-pointer whitespace-nowrap">
+        🍽️ 1. Dziennik & Baza Produktów
+      </button>
+      <button type="button" onclick="switchTab('progress')" id="tab-btn-progress" class="tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent transition cursor-pointer whitespace-nowrap">
+        📈 2. Wykresy Wagi i Kroków
+      </button>
+      <button type="button" onclick="switchTab('backup')" id="tab-btn-backup" class="tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent transition cursor-pointer whitespace-nowrap">
+        💾 3. Kopia Zapasowa & Eksport
+      </button>
+    </nav>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 1: DAILY DIARY + UNIVERSAL FOOD DATABASE                          -->
+    <!-- ===================================================================== -->
+    <div id="tab-diary" class="space-y-6">
+
+      <!-- Macro Progress Bars -->
+      <section class="grid grid-cols-1 md:grid-cols-12 gap-4">
+        <!-- Calories -->
+        <div class="md:col-span-5 bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div class="flex justify-between items-end mb-2">
+            <div>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Kalorie Zjedzone</span>
+              <div class="flex items-baseline gap-2 mt-0.5">
+                <span id="bar-kcal-val" class="text-2xl sm:text-3xl font-black text-white">0</span>
+                <span class="text-xs sm:text-sm text-slate-400">/ <span id="bar-kcal-max">2068</span> kcal</span>
+              </div>
+            </div>
+            <span id="bar-kcal-pill" class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400">
+              Pozostało 2068 kcal
+            </span>
+          </div>
+          <div class="w-full h-3.5 bg-slate-800 rounded-full overflow-hidden">
+            <div id="bar-kcal-fill" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Protein -->
+        <div class="md:col-span-4 bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div class="flex justify-between items-end mb-2">
+            <div>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Białko</span>
+              <div class="flex items-baseline gap-2 mt-0.5">
+                <span id="bar-prot-val" class="text-2xl sm:text-3xl font-black text-cyan-400">0.0</span>
+                <span class="text-xs sm:text-sm text-slate-400">/ <span id="bar-prot-max">150</span> g</span>
+              </div>
+            </div>
+            <span id="bar-prot-pill" class="text-xs font-bold px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300">
+              Pozostało 150.0 g
+            </span>
+          </div>
+          <div class="w-full h-3.5 bg-slate-800 rounded-full overflow-hidden">
+            <div id="bar-prot-fill" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Carbs & Fat -->
+        <div class="md:col-span-3 bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-400 font-semibold">Węglowodany</span>
+              <strong id="bar-carb-text" class="text-amber-300">0 / 225 g</strong>
+            </div>
+            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+              <div id="bar-carb-fill" class="h-full bg-amber-400 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-400 font-semibold">Tłuszcze</span>
+              <strong id="bar-fat-text" class="text-rose-300">0 / 63 g</strong>
+            </div>
+            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+              <div id="bar-fat-fill" class="h-full bg-rose-400 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main Grid: Left = Food Database & Label Calculator, Right = Logged Meals -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left: Food Database (7 cols) -->
+        <div class="lg:col-span-7 space-y-5">
+          <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 class="text-base font-extrabold text-white">⚡ Baza Produktów (Gotowce)</h2>
+                <p class="text-xs text-slate-400">Wybierz posiłek, mnożnik porcji i dodaj jednym dotknięciem</p>
+              </div>
+
+              <div class="flex items-center gap-2 flex-wrap">
+                <select id="meal-slot-select" class="bg-slate-850 border border-slate-700 text-xs font-bold rounded-xl px-3 py-2.5 text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
+                  <option value="Śniadanie">🌅 Śniadanie</option>
+                  <option value="Obiad">🍝 Obiad</option>
+                  <option value="Kolacja">🌙 Kolacja</option>
+                  <option value="Przekąska">🍎 Przekąska</option>
+                </select>
+                <div class="flex bg-slate-850 border border-slate-700 rounded-xl p-0.5 text-xs font-bold">
+                  <button type="button" onclick="setMultiplier(0.5)" data-m="0.5" class="mult-btn px-2.5 py-2 rounded-lg text-slate-400 hover:text-white cursor-pointer">×0.5</button>
+                  <button type="button" onclick="setMultiplier(1)" data-m="1" class="mult-btn px-3 py-2 rounded-lg bg-emerald-500 text-slate-950 cursor-pointer">×1</button>
+                  <button type="button" onclick="setMultiplier(1.5)" data-m="1.5" class="mult-btn px-2.5 py-2 rounded-lg text-slate-400 hover:text-white cursor-pointer">×1.5</button>
+                  <button type="button" onclick="setMultiplier(2)" data-m="2" class="mult-btn px-2.5 py-2 rounded-lg text-slate-400 hover:text-white cursor-pointer">×2</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Category Filters & Search -->
+            <div class="flex flex-col sm:flex-row gap-2.5">
+              <div class="flex gap-1.5 overflow-x-auto pb-1 shrink-0">
+                <button type="button" onclick="setCategory('Wszystkie')" data-cat="Wszystkie" class="cat-pill px-3 py-2 rounded-xl text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-pointer whitespace-nowrap">Wszystkie</button>
+                <button type="button" onclick="setCategory('Białko & Nabiał')" data-cat="Białko & Nabiał" class="cat-pill px-3 py-2 rounded-xl text-xs font-semibold bg-slate-850 text-slate-400 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap">🥩 Białko & Nabiał</button>
+                <button type="button" onclick="setCategory('Węglowodany')" data-cat="Węglowodany" class="cat-pill px-3 py-2 rounded-xl text-xs font-semibold bg-slate-850 text-slate-400 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap">🍚 Węglowodany</button>
+                <button type="button" onclick="setCategory('Tłuszcze & Dodatki')" data-cat="Tłuszcze & Dodatki" class="cat-pill px-3 py-2 rounded-xl text-xs font-semibold bg-slate-850 text-slate-400 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap">🥑 Tłuszcze & Owoce</button>
+              </div>
+              <input id="food-search-input" type="text" oninput="renderFoodBank()" placeholder="Szukaj produktu..."
+                class="w-full bg-slate-850 border border-slate-700/80 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500" />
+            </div>
+
+            <!-- Food Cards Grid -->
+            <div id="food-bank-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[460px] overflow-y-auto pr-1">
+              <!-- Rendered by JS -->
+            </div>
+
+            <!-- Label Calculator & Custom Product Builder -->
+            <details class="pt-4 border-t border-slate-800" open>
+              <summary class="text-xs font-bold text-cyan-400 hover:text-cyan-300 cursor-pointer select-none flex items-center gap-1.5 py-1">
+                <span>🏷️ Kalkulator z etykiety (wartości na 100 g + waga w gramach)</span>
+              </summary>
+              <form onsubmit="handleLabelForm(event)" class="mt-3 bg-slate-850/90 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                  <div class="sm:col-span-6">
+                    <label class="block text-[11px] text-slate-400 mb-1">Nazwa produktu</label>
+                    <input id="lbl-name" type="text" required placeholder="np. Pierś z indyka / Płatki owsiane"
+                      class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div class="sm:col-span-3">
+                    <label class="block text-[11px] text-slate-400 mb-1">Kategoria</label>
+                    <select id="lbl-category" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                      <option value="Białko & Nabiał">Białko & Nabiał</option>
+                      <option value="Węglowodany">Węglowodany</option>
+                      <option value="Tłuszcze & Dodatki">Tłuszcze & Dodatki</option>
+                    </select>
+                  </div>
+                  <div class="sm:col-span-3">
+                    <label class="block text-[11px] text-emerald-400 font-bold mb-1">Porcja (g)</label>
+                    <input id="lbl-grams" type="number" step="1" min="1" value="100" required
+                      class="w-full bg-slate-900 border border-emerald-500/60 rounded-xl px-3 py-2.5 text-xs font-black text-white focus:outline-none focus:border-emerald-400" />
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Kcal / 100 g</label>
+                    <input id="lbl-kcal" type="number" step="0.1" min="0" required placeholder="0"
+                      class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-cyan-400 mb-1">Białko / 100 g</label>
+                    <input id="lbl-prot" type="number" step="0.1" min="0" required placeholder="0"
+                      class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-amber-400 mb-1">Węgle / 100 g</label>
+                    <input id="lbl-carb" type="number" step="0.1" min="0" value="0"
+                      class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-rose-400 mb-1">Tłuszcz / 100 g</label>
+                    <input id="lbl-fat" type="number" step="0.1" min="0" value="0"
+                      class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                </div>
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                    <input id="lbl-save-db" type="checkbox" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-emerald-500 focus:ring-0" />
+                    <span>Zapisz w Bazie Produktów na stałe</span>
+                  </label>
+                  <button type="submit" class="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs transition cursor-pointer">
+                    + Dodaj do dziennika
+                  </button>
+                </div>
+              </form>
+            </details>
+          </div>
+        </div>
+
+        <!-- Right: Day's Logged Meals (5 cols) -->
+        <div class="lg:col-span-5">
+          <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[460px]">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h2 class="text-base font-extrabold text-white">📋 Zjedzone w wybranym dniu</h2>
+                  <p class="text-xs text-slate-400">Automatyczny zapis w pamięci urządzenia</p>
+                </div>
+                <button type="button" onclick="clearDayMeals()" class="text-xs font-bold px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 transition cursor-pointer">
+                  Wyczyść dzień
+                </button>
+              </div>
+
+              <div id="logged-meals-container" class="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                <!-- Rendered by JS -->
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+              <span class="text-slate-400">Suma dnia:</span>
+              <span id="logged-meals-footer" class="font-bold text-slate-200">0 kcal • 0g B • 0g W • 0g T</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 2: WEIGHT & STEPS LOG + SVG CHARTS                                -->
+    <!-- ===================================================================== -->
+    <div id="tab-progress" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left: Morning Weight Log + 7-Day Average (6 cols) -->
+        <div class="lg:col-span-6 bg-slate-900/95 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div>
+            <h2 class="text-base font-extrabold text-white">⚖️ Rejestr Wagi & Średnia 7-dniowa</h2>
+            <p class="text-xs text-slate-400">Dodawaj pomiary poranne, aby śledzić trend bez wahań wody</p>
+          </div>
+
+          <form onsubmit="addWeightLog(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-2 bg-slate-850 p-3 rounded-2xl border border-slate-800">
+            <input id="wlog-date" type="date" required
+              class="sm:col-span-5 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+            <input id="wlog-val" type="number" step="0.1" min="35" max="250" placeholder="Waga (kg)" required
+              class="sm:col-span-4 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white focus:outline-none focus:border-emerald-500" />
+            <button type="submit" class="sm:col-span-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs py-2.5 px-3 rounded-xl transition cursor-pointer">
+              + Zapisz
+            </button>
+          </form>
+
+          <div class="grid grid-cols-3 gap-2.5 text-center">
+            <div class="bg-slate-850 border border-slate-800 rounded-xl p-2.5">
+              <div class="text-[10px] uppercase text-slate-400 font-bold">Średnia 7 dni</div>
+              <div id="stat-weight-7d" class="text-base font-black text-emerald-400 mt-0.5">—</div>
+            </div>
+            <div class="bg-slate-850 border border-slate-800 rounded-xl p-2.5">
+              <div class="text-[10px] uppercase text-slate-400 font-bold">Zmiana łącznie</div>
+              <div id="stat-weight-delta" class="text-base font-black text-white mt-0.5">—</div>
+            </div>
+            <div class="bg-slate-850 border border-slate-800 rounded-xl p-2.5">
+              <div class="text-[10px] uppercase text-slate-400 font-bold">Do wagi docelowej</div>
+              <div id="stat-weight-rem" class="text-base font-black text-cyan-300 mt-0.5">—</div>
+            </div>
+          </div>
+
+          <!-- SVG Weight Chart -->
+          <div class="bg-slate-850 border border-slate-800 rounded-2xl p-3">
+            <div class="flex justify-between text-[11px] text-slate-400 mb-1">
+              <span>Wykres pomiarów wagi</span>
+              <span class="text-emerald-400">● Pomiary</span>
+            </div>
+            <div id="weight-chart-svg" class="w-full h-36"></div>
+          </div>
+
+          <div class="max-h-48 overflow-y-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400">
+                  <th class="py-2 px-2">Data</th>
+                  <th class="py-2 px-2">Waga</th>
+                  <th class="py-2 px-2">Śr. 7d</th>
+                  <th class="py-2 px-2 text-right">Usuń</th>
+                </tr>
+              </thead>
+              <tbody id="weight-table-body" class="divide-y divide-slate-800/60"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right: Steps Log + Bar Chart (6 cols) -->
+        <div class="lg:col-span-6 bg-slate-900/95 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-extrabold text-white">👟 Rejestr Kroków</h2>
+              <p class="text-xs text-slate-400">Zapisuj dzienną aktywność i sprawdzaj średnią tygodniową</p>
+            </div>
+            <span id="stat-steps-7d" class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300">
+              Śr. 7d: —
+            </span>
+          </div>
+
+          <form onsubmit="addStepsLog(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-2 bg-slate-850 p-3 rounded-2xl border border-slate-800">
+            <input id="slog-date" type="date" required
+              class="sm:col-span-5 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+            <input id="slog-val" type="number" step="50" min="0" max="60000" placeholder="Liczba kroków" required
+              class="sm:col-span-4 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-amber-300 focus:outline-none focus:border-emerald-500" />
+            <button type="submit" class="sm:col-span-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs py-2.5 px-3 rounded-xl transition cursor-pointer">
+              + Zapisz
+            </button>
+          </form>
+
+          <!-- SVG Steps Chart -->
+          <div class="bg-slate-850 border border-slate-800 rounded-2xl p-3">
+            <div class="flex justify-between text-[11px] text-slate-400 mb-1">
+              <span>Ostatnie 7 dni aktywności</span>
+              <span>Linia przerywana: <strong id="chart-steps-goal-label" class="text-emerald-400">8 000 kroków</strong></span>
+            </div>
+            <div id="steps-chart-svg" class="w-full h-40"></div>
+          </div>
+
+          <div class="max-h-52 overflow-y-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400">
+                  <th class="py-2 px-2">Data</th>
+                  <th class="py-2 px-2">Kroki</th>
+                  <th class="py-2 px-2">Spalone kcal</th>
+                  <th class="py-2 px-2 text-right">Usuń</th>
+                </tr>
+              </thead>
+              <tbody id="steps-table-body" class="divide-y divide-slate-800/60"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 3: BACKUP, JSON EXPORT/IMPORT & STANDALONE HTML                   -->
+    <!-- ===================================================================== -->
+    <div id="tab-backup" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Summary Text Copy (6 cols) -->
+        <div class="lg:col-span-6 bg-slate-900/95 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div>
+            <h2 class="text-base font-extrabold text-white">📝 Podsumowanie Dnia (Tekst)</h2>
+            <p class="text-xs text-slate-400">Skopiuj czysty raport z wybranego dnia do swoich notatek</p>
+          </div>
+          <button type="button" onclick="copyDaySummary()" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition cursor-pointer">
+            📋 Kopiuj podsumowanie dnia
+          </button>
+          <textarea id="day-summary-preview" rows="11" readonly
+            class="w-full bg-slate-850 border border-slate-700 rounded-2xl p-3.5 text-xs font-mono text-slate-200 focus:outline-none"></textarea>
+        </div>
+
+        <!-- Backup & Standalone HTML (6 cols) -->
+        <div class="lg:col-span-6 bg-slate-900/95 border border-slate-800 rounded-2xl p-5 space-y-5">
+          <div>
+            <h2 class="text-base font-extrabold text-white">🛡️ Kopia Zapasowa & Plik Offline</h2>
+            <p class="text-xs text-slate-400">Wszystkie Twoje wpisy zapisują się automatycznie w pamięci przeglądarki (`localStorage`).</p>
+          </div>
+
+          <div class="bg-slate-850 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">1. Eksport / Import danych (.json)</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Pobierz plik kopii zapasowej, aby przenieść swoje posiłki, wagę i bazę produktów na inne urządzenie lub zabezpieczyć dane.
+            </p>
+            <div class="flex flex-wrap gap-2.5 pt-1">
+              <button type="button" onclick="exportJSON()" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition cursor-pointer">
+                ⬇️ Eksportuj dane (.json)
+              </button>
+              <label class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs transition cursor-pointer inline-flex items-center gap-1.5">
+                <span>⬆️ Importuj dane (.json)</span>
+                <input type="file" accept=".json" onchange="importJSON(event)" class="hidden" />
+              </label>
+            </div>
+          </div>
+
+          <div class="bg-slate-850 border border-cyan-500/25 rounded-2xl p-4 space-y-3">
+            <h3 class="text-xs font-bold text-cyan-400 uppercase tracking-wider">2. Pobierz samodzielny plik index.html</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Pobierz czysty plik <code class="text-emerald-300">index.html</code> gotowy do wrzucenia na GitHub Pages, Netlify lub otwierania lokalnie na telefonie.
+            </p>
+            <button type="button" onclick="downloadIndexHTML()" class="px-4 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-bold text-xs transition cursor-pointer">
+              ⬇️ Pobierz plik index.html
+            </button>
+          </div>
+
+          <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+            <span class="text-[11px] text-slate-500">Wyczyść wszystkie zapisane dane z przeglądarki:</span>
+            <button type="button" onclick="resetAllData()" class="text-[11px] font-semibold text-rose-400 hover:text-rose-300 underline cursor-pointer">
+              Resetuj aplikację
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // 1. UNIVERSAL DEFAULT STATE (ZERO PERSONAL DATA)
+    // =========================================================================
+    const STORAGE_KEY = 'makroflow_universal_v1';
+
+    const DEFAULT_FOOD_BANK = [
+      { id: 'chicken-breast', name: 'Pierś z kurczaka (surowa)', category: 'Białko & Nabiał', portion: '100 g', kcal: 99, protein: 21.5, carbs: 0.0, fat: 1.3 },
+      { id: 'egg-m', name: 'Jajko kurze (rozmiar M)', category: 'Białko & Nabiał', portion: '1 szt. (~56 g)', kcal: 78, protein: 7.0, carbs: 0.4, fat: 5.3 },
+      { id: 'skyr-natural', name: 'Skyr naturalny', category: 'Białko & Nabiał', portion: '1 opakowanie (150 g)', kcal: 96, protein: 18.0, carbs: 6.0, fat: 0.0 },
+      { id: 'cottage-lean', name: 'Twaróg chudy', category: 'Białko & Nabiał', portion: '100 g', kcal: 92, protein: 19.5, carbs: 3.5, fat: 0.5 },
+      { id: 'rice-white', name: 'Ryż biały (suchy)', category: 'Węglowodany', portion: '100 g (1 woreczek)', kcal: 344, protein: 6.7, carbs: 78.9, fat: 0.7 },
+      { id: 'rye-bread', name: 'Chleb żytni razowy', category: 'Węglowodany', portion: '1 kromka (~40 g)', kcal: 88, protein: 2.4, carbs: 18.4, fat: 0.6 },
+      { id: 'oats', name: 'Płatki owsiane górskie', category: 'Węglowodany', portion: '50 g', kcal: 189, protein: 6.5, carbs: 31.2, fat: 3.6 },
+      { id: 'pasta-durum', name: 'Makaron pszenny durum (suchy)', category: 'Węglowodany', portion: '100 g', kcal: 352, protein: 12.0, carbs: 71.0, fat: 1.5 },
+      { id: 'olive-oil', name: 'Oliwa z oliwek', category: 'Tłuszcze & Dodatki', portion: '1 łyżka (10 g)', kcal: 88, protein: 0.0, carbs: 0.0, fat: 10.0 },
+      { id: 'banana', name: 'Banan (obrany)', category: 'Tłuszcze & Dodatki', portion: '1 szt. (~120 g)', kcal: 107, protein: 1.3, carbs: 27.4, fat: 0.4 }
+    ];
+
+    function getTodayISO() {
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      return new Date(now.getTime() - offset).toISOString().split('T')[0];
+    }
+
+    function createInitialState() {
+      const today = getTodayISO();
+      return {
+        profileConfigured: false,
+        profile: {
+          sex: 'male',
+          age: 25,
+          height: 175,
+          weight: 75.0,
+          targetWeight: 70.0,
+          stepsGoal: 8000,
+          goalType: 'cut',
+          kcalTarget: 2068,
+          protTarget: 150,
+          carbTarget: 225,
+          fatTarget: 63
+        },
+        activeDate: today,
+        portionMultiplier: 1,
+        selectedCategory: 'Wszystkie',
+        foodBank: JSON.parse(JSON.stringify(DEFAULT_FOOD_BANK)),
+        mealsByDate: {},
+        weightLog: [],
+        stepsLog: []
+      };
+    }
+
+    let state = createInitialState();
+
+    // =========================================================================
+    // 2. LOCALSTORAGE PERSISTENCE
+    // =========================================================================
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          state = {
+            ...createInitialState(),
+            ...parsed,
+            profile: { ...createInitialState().profile, ...(parsed.profile || {}) },
+            foodBank: Array.isArray(parsed.foodBank) && parsed.foodBank.length ? parsed.foodBank : JSON.parse(JSON.stringify(DEFAULT_FOOD_BANK)),
+            mealsByDate: parsed.mealsByDate || {},
+            weightLog: Array.isArray(parsed.weightLog) ? parsed.weightLog : [],
+            stepsLog: Array.isArray(parsed.stepsLog) ? parsed.stepsLog : []
+          };
+        }
+      } catch (e) {
+        console.error('Błąd odczytu danych:', e);
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('Błąd zapisu danych:', e);
+      }
+    }
+
+    // =========================================================================
+    // 3. BMR, TDEE & MACRO CALCULATOR (MIFFLIN-ST JEOR)
+    // =========================================================================
+    function calculateBMR(p) {
+      const base = 10 * p.weight + 6.25 * p.height - 5 * p.age;
+      return Math.round(p.sex === 'male' ? base + 5 : base - 161);
+    }
+
+    function calculateStepBurn(weight, steps) {
+      return Math.round(steps * (weight * 0.00049));
+    }
+
+    function calculateTDEE(p, steps) {
+      const bmr = calculateBMR(p);
+      const stepKcal = calculateStepBurn(p.weight, steps);
+      const tdee = Math.round(bmr * 1.30) + stepKcal;
+      return { bmr, stepKcal, tdee };
+    }
+
+    function computeSuggestedTargets(p) {
+      const { tdee } = calculateTDEE(p, p.stepsGoal);
+      let delta = -500;
+      if (p.goalType === 'fast_cut') delta = -750;
+      else if (p.goalType === 'maintain') delta = 0;
+      else if (p.goalType === 'bulk') delta = 300;
+
+      const kcalTarget = Math.max(1200, tdee + delta);
+      const protPerKg = p.goalType === 'cut' || p.goalType === 'fast_cut' ? 2.0 : 1.8;
+      const protTarget = Math.round(p.weight * protPerKg);
+      const fatTarget = Math.round((kcalTarget * 0.28) / 9);
+      const carbTarget = Math.max(20, Math.round((kcalTarget - protTarget * 4 - fatTarget * 9) / 4));
+
+      return { tdee, kcalTarget, protTarget, carbTarget, fatTarget };
+    }
+
+    // =========================================================================
+    // 4. PROFILE MODAL LOGIC
+    // =========================================================================
+    function openProfileModal() {
+      const p = state.profile;
+      document.getElementById('prof-sex').value = p.sex;
+      document.getElementById('prof-age').value = p.age;
+      document.getElementById('prof-height').value = p.height;
+      document.getElementById('prof-weight').value = p.weight;
+      document.getElementById('prof-target-weight').value = p.targetWeight;
+      document.getElementById('prof-steps-goal').value = p.stepsGoal;
+      document.getElementById('prof-goal-type').value = p.goalType;
+      document.getElementById('prof-kcal-target').value = p.kcalTarget;
+      document.getElementById('prof-prot-target').value = p.protTarget;
+      document.getElementById('prof-carb-target').value = p.carbTarget;
+      document.getElementById('prof-fat-target').value = p.fatTarget;
+      previewCalculatedTargets();
+
+      const modal = document.getElementById('profile-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeProfileModal() {
+      const modal = document.getElementById('profile-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function readModalProfileDraft() {
+      return {
+        sex: document.getElementById('prof-sex').value,
+        age: parseInt(document.getElementById('prof-age').value, 10) || 25,
+        height: parseFloat(document.getElementById('prof-height').value) || 175,
+        weight: parseFloat(document.getElementById('prof-weight').value) || 75,
+        targetWeight: parseFloat(document.getElementById('prof-target-weight').value) || 70,
+        stepsGoal: parseInt(document.getElementById('prof-steps-goal').value, 10) || 8000,
+        goalType: document.getElementById('prof-goal-type').value
+      };
+    }
+
+    function previewCalculatedTargets() {
+      const draft = readModalProfileDraft();
+      const sug = computeSuggestedTargets(draft);
+      document.getElementById('prof-tdee-hint').textContent =
+        `Sugerowane TDEE: ${sug.tdee} kcal • Propozycja: ${sug.kcalTarget} kcal (${sug.protTarget}g B / ${sug.carbTarget}g W / ${sug.fatTarget}g T)`;
+    }
+
+    function applySuggestedMacros() {
+      const draft = readModalProfileDraft();
+      const sug = computeSuggestedTargets(draft);
+      document.getElementById('prof-kcal-target').value = sug.kcalTarget;
+      document.getElementById('prof-prot-target').value = sug.protTarget;
+      document.getElementById('prof-carb-target').value = sug.carbTarget;
+      document.getElementById('prof-fat-target').value = sug.fatTarget;
+      previewCalculatedTargets();
+      showToast('Przeliczono zalecane kalorie i makro!');
+    }
+
+    function saveProfileSettings(e) {
+      e.preventDefault();
+      const draft = readModalProfileDraft();
+      state.profile = {
+        ...draft,
+        kcalTarget: parseInt(document.getElementById('prof-kcal-target').value, 10) || 2000,
+        protTarget: parseInt(document.getElementById('prof-prot-target').value, 10) || 140,
+        carbTarget: parseInt(document.getElementById('prof-carb-target').value, 10) || 200,
+        fatTarget: parseInt(document.getElementById('prof-fat-target').value, 10) || 60
+      };
+      state.profileConfigured = true;
+      closeProfileModal();
+      showToast('Zapisano ustawienia profilu i celów!');
+      renderAll();
+    }
+
+    // =========================================================================
+    // 5. TOP CONTROLS & DATE NAVIGATION
+    // =========================================================================
+    function onQuickWeightChange(val) {
+      const num = parseFloat(val);
+      if (!isNaN(num) && num >= 35 && num <= 250) {
+        state.profile.weight = parseFloat(num.toFixed(1));
+        renderAll();
+      }
+    }
+
+    function adjustQuickWeight(delta) {
+      state.profile.weight = parseFloat(Math.max(35, Math.min(250, state.profile.weight + delta)).toFixed(1));
+      document.getElementById('quick-weight-input').value = state.profile.weight.toFixed(1);
+      renderAll();
+    }
+
+    function getStepsForDate(dateStr) {
+      const found = state.stepsLog.find(s => s.date === dateStr);
+      return found ? found.steps : state.profile.stepsGoal;
+    }
+
+    function onQuickStepsChange(val) {
+      const steps = Math.max(0, Math.min(60000, parseInt(val, 10) || 0));
+      document.getElementById('quick-steps-input').value = steps;
+      const existing = state.stepsLog.find(s => s.date === state.activeDate);
+      if (existing) {
+        existing.steps = steps;
+      } else {
+        state.stepsLog.push({ date: state.activeDate, steps });
+      }
+      state.stepsLog.sort((a, b) => a.date.localeCompare(b.date));
+      renderAll();
+    }
+
+    function formatDatePL(iso) {
+      const days = ['Niedziela', 'Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota'];
+      const months = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+      const d = new Date(iso + 'T12:00:00');
+      if (isNaN(d.getTime())) return iso;
+      return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    }
+
+    function onDateChange(newDate) {
+      if (!newDate) return;
+      state.activeDate = newDate;
+      document.getElementById('wlog-date').value = newDate;
+      document.getElementById('slog-date').value = newDate;
+      renderAll();
+    }
+
+    function shiftDate(delta) {
+      const d = new Date(state.activeDate + 'T12:00:00');
+      d.setDate(d.getDate() + delta);
+      const iso = d.toISOString().split('T')[0];
+      document.getElementById('active-date-input').value = iso;
+      onDateChange(iso);
+    }
+
+    function jumpToToday() {
+      const today = getTodayISO();
+      document.getElementById('active-date-input').value = today;
+      onDateChange(today);
+    }
+
+    // =========================================================================
+    // 6. FOOD BANK & DIARY ACTIONS
+    // =========================================================================
+    function setMultiplier(mult) {
+      state.portionMultiplier = mult;
+      document.querySelectorAll('.mult-btn').forEach(btn => {
+        const active = parseFloat(btn.dataset.m) === mult;
+        btn.className = active
+          ? 'mult-btn px-3 py-2 rounded-lg bg-emerald-500 text-slate-950 cursor-pointer'
+          : 'mult-btn px-2.5 py-2 rounded-lg text-slate-400 hover:text-white cursor-pointer';
+      });
+      renderFoodBank();
+    }
+
+    function setCategory(cat) {
+      state.selectedCategory = cat;
+      document.querySelectorAll('.cat-pill').forEach(btn => {
+        const active = btn.dataset.cat === cat;
+        btn.className = active
+          ? 'cat-pill px-3 py-2 rounded-xl text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-pointer whitespace-nowrap'
+          : 'cat-pill px-3 py-2 rounded-xl text-xs font-semibold bg-slate-850 text-slate-400 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap';
+      });
+      renderFoodBank();
+    }
+
+    function renderFoodBank() {
+      const grid = document.getElementById('food-bank-grid');
+      const query = document.getElementById('food-search-input').value.toLowerCase().trim();
+      const mult = state.portionMultiplier;
+
+      const filtered = state.foodBank.filter(item => {
+        const catOk = state.selectedCategory === 'Wszystkie' || item.category === state.selectedCategory;
+        const textOk = item.name.toLowerCase().includes(query) || item.portion.toLowerCase().includes(query);
+        return catOk && textOk;
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="sm:col-span-2 text-center py-8 text-xs text-slate-500">Brak produktów pasujących do wyszukiwania.</div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(item => {
+        const k = Math.round(item.kcal * mult);
+        const p = (item.protein * mult).toFixed(1);
+        const c = (item.carbs * mult).toFixed(1);
+        const f = (item.fat * mult).toFixed(1);
+        return `
+          <div class="p-3.5 rounded-xl bg-slate-850 border border-slate-800 hover:border-emerald-500/40 transition flex flex-col justify-between gap-2">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <span class="text-xs font-bold text-slate-100 leading-snug">${item.name}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 shrink-0">${item.category.split(' ')[0]}</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5">${item.portion} ${mult !== 1 ? `<strong class="text-emerald-400">(×${mult})</strong>` : ''}</p>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-slate-800/80">
+              <div class="text-[11px]">
+                <strong class="text-white">${k} kcal</strong>
+                <span class="text-slate-500 mx-1">|</span>
+                <strong class="text-cyan-400">B:${p}g</strong>
+                <span class="text-slate-400 ml-1">W:${c} T:${f}</span>
+              </div>
+              <button type="button" onclick="addFoodToDay('${item.id}')"
+                class="px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 font-extrabold text-xs transition cursor-pointer">
+                + Dodaj
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addFoodToDay(foodId) {
+      const item = state.foodBank.find(f => f.id === foodId);
+      if (!item) return;
+      const slot = document.getElementById('meal-slot-select').value;
+      const mult = state.portionMultiplier;
+
+      if (!state.mealsByDate[state.activeDate]) {
+        state.mealsByDate[state.activeDate] = [];
+      }
+
+      state.mealsByDate[state.activeDate].push({
+        uid: Date.now() + Math.random(),
+        slot,
+        name: mult === 1 ? item.name : `${item.name} (×${mult})`,
+        kcal: Math.round(item.kcal * mult),
+        protein: parseFloat((item.protein * mult).toFixed(1)),
+        carbs: parseFloat((item.carbs * mult).toFixed(1)),
+        fat: parseFloat((item.fat * mult).toFixed(1))
+      });
+
+      showToast(`Dodano (${slot}): ${item.name}`);
+      renderAll();
+    }
+
+    function handleLabelForm(e) {
+      e.preventDefault();
+      const name = document.getElementById('lbl-name').value.trim();
+      const category = document.getElementById('lbl-category').value;
+      const grams = parseFloat(document.getElementById('lbl-grams').value);
+      const kcal100 = parseFloat(document.getElementById('lbl-kcal').value);
+      const prot100 = parseFloat(document.getElementById('lbl-prot').value);
+      const carb100 = parseFloat(document.getElementById('lbl-carb').value) || 0;
+      const fat100 = parseFloat(document.getElementById('lbl-fat').value) || 0;
+      const saveToDb = document.getElementById('lbl-save-db').checked;
+
+      if (!name || isNaN(grams) || grams <= 0 || isNaN(kcal100) || isNaN(prot100)) return;
+
+      const ratio = grams / 100;
+      const kcal = Math.round(kcal100 * ratio);
+      const protein = parseFloat((prot100 * ratio).toFixed(1));
+      const carbs = parseFloat((carb100 * ratio).toFixed(1));
+      const fat = parseFloat((fat100 * ratio).toFixed(1));
+      const slot = document.getElementById('meal-slot-select').value;
+
+      if (!state.mealsByDate[state.activeDate]) {
+        state.mealsByDate[state.activeDate] = [];
+      }
+
+      state.mealsByDate[state.activeDate].push({
+        uid: Date.now() + Math.random(),
+        slot,
+        name: `${name} (${grams} g)`,
+        kcal,
+        protein,
+        carbs,
+        fat
+      });
+
+      if (saveToDb) {
+        state.foodBank.unshift({
+          id: 'food-' + Date.now(),
+          name,
+          category,
+          portion: `${grams} g`,
+          kcal,
+          protein,
+          carbs,
+          fat
+        });
+      }
+
+      document.getElementById('lbl-name').value = '';
+      document.getElementById('lbl-kcal').value = '';
+      document.getElementById('lbl-prot').value = '';
+      document.getElementById('lbl-carb').value = '0';
+      document.getElementById('lbl-fat').value = '0';
+
+      showToast(`Dodano ${name} (${grams}g): ${kcal} kcal`);
+      renderAll();
+    }
+
+    function deleteMealEntry(uid) {
+      const list = state.mealsByDate[state.activeDate] || [];
+      state.mealsByDate[state.activeDate] = list.filter(m => m.uid !== uid);
+      renderAll();
+    }
+
+    function clearDayMeals() {
+      state.mealsByDate[state.activeDate] = [];
+      showToast(`Wyczyszczono wpisy z dnia ${state.activeDate}`);
+      renderAll();
+    }
+
+    // =========================================================================
+    // 7. WEIGHT & STEPS LOGS + SVG CHARTS
+    // =========================================================================
+    function addWeightLog(e) {
+      e.preventDefault();
+      const date = document.getElementById('wlog-date').value;
+      const weight = parseFloat(document.getElementById('wlog-val').value);
+      if (!date || isNaN(weight) || weight < 35 || weight > 250) return;
+
+      const existing = state.weightLog.find(w => w.date === date);
+      if (existing) {
+        existing.weight = parseFloat(weight.toFixed(1));
+      } else {
+        state.weightLog.push({ date, weight: parseFloat(weight.toFixed(1)) });
+      }
+      state.weightLog.sort((a, b) => a.date.localeCompare(b.date));
+
+      const latest = state.weightLog[state.weightLog.length - 1];
+      state.profile.weight = latest.weight;
+      document.getElementById('wlog-val').value = '';
+      showToast(`Zapisano pomiar wagi: ${weight.toFixed(1)} kg`);
+      renderAll();
+    }
+
+    function deleteWeightLog(date) {
+      state.weightLog = state.weightLog.filter(w => w.date !== date);
+      renderAll();
+    }
+
+    function addStepsLog(e) {
+      e.preventDefault();
+      const date = document.getElementById('slog-date').value;
+      const steps = parseInt(document.getElementById('slog-val').value, 10);
+      if (!date || isNaN(steps) || steps < 0) return;
+
+      const existing = state.stepsLog.find(s => s.date === date);
+      if (existing) {
+        existing.steps = steps;
+      } else {
+        state.stepsLog.push({ date, steps });
+      }
+      state.stepsLog.sort((a, b) => a.date.localeCompare(b.date));
+      document.getElementById('slog-val').value = '';
+      showToast(`Zapisano ${steps.toLocaleString('pl-PL')} kroków`);
+      renderAll();
+    }
+
+    function deleteStepsLog(date) {
+      state.stepsLog = state.stepsLog.filter(s => s.date !== date);
+      renderAll();
+    }
+
+    function renderProgressCharts() {
+      const wSorted = [...state.weightLog].sort((a, b) => a.date.localeCompare(b.date));
+      const last7W = wSorted.slice(-7);
+      const avg7W = last7W.length > 0 ? last7W.reduce((s, x) => s + x.weight, 0) / last7W.length : null;
+      const startW = wSorted.length > 0 ? wSorted[0].weight : state.profile.weight;
+      const currentW = wSorted.length > 0 ? wSorted[wSorted.length - 1].weight : state.profile.weight;
+      const deltaW = currentW - startW;
+      const remW = currentW - state.profile.targetWeight;
+
+      document.getElementById('stat-weight-7d').textContent = avg7W !== null ? `${avg7W.toFixed(1)} kg` : 'Brak danych';
+      document.getElementById('stat-weight-delta').textContent = wSorted.length >= 2 ? `${deltaW > 0 ? '+' : ''}${deltaW.toFixed(1)} kg` : '—';
+      document.getElementById('stat-weight-rem').textContent = `${Math.abs(remW).toFixed(1)} kg`;
+
+      const wBody = document.getElementById('weight-table-body');
+      if (wSorted.length === 0) {
+        wBody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500">Brak zapisanych pomiarów wagi.</td></tr>`;
+      } else {
+        wBody.innerHTML = [...wSorted].reverse().map((item, rIdx) => {
+          const origIdx = wSorted.length - 1 - rIdx;
+          const slice = wSorted.slice(Math.max(0, origIdx - 6), origIdx + 1);
+          const avg = (slice.reduce((s, x) => s + x.weight, 0) / slice.length).toFixed(1);
+          return `
+            <tr>
+              <td class="py-2 px-2 text-slate-300">${item.date}</td>
+              <td class="py-2 px-2 font-bold text-white">${item.weight.toFixed(1)} kg</td>
+              <td class="py-2 px-2 text-emerald-400 font-semibold">${avg} kg</td>
+              <td class="py-2 px-2 text-right">
+                <button type="button" onclick="deleteWeightLog('${item.date}')" class="text-slate-500 hover:text-rose-400 font-bold px-1.5 cursor-pointer">×</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      const wSvg = document.getElementById('weight-chart-svg');
+      if (wSorted.length === 0) {
+        wSvg.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-500">Dodaj pierwszy pomiar wagi, aby zobaczyć wykres</div>`;
+      } else {
+        const pts = wSorted.slice(-14);
+        const minW = Math.min(...pts.map(p => p.weight)) - 1;
+        const maxW = Math.max(...pts.map(p => p.weight)) + 1;
+        const W = 400, H = 130, pad = 20;
+        const coords = pts.map((p, i) => {
+          const x = pts.length === 1 ? W / 2 : pad + (i / (pts.length - 1)) * (W - pad * 2);
+          const y = pad + ((maxW - p.weight) / Math.max(0.5, maxW - minW)) * (H - pad * 2);
+          return { x, y, val: p.weight.toFixed(1), date: p.date.slice(5) };
+        });
+        const poly = coords.map(c => `${c.x},${c.y}`).join(' ');
+        wSvg.innerHTML = `
+          <svg viewBox="0 0 ${W} ${H}" class="w-full h-full overflow-visible">
+            ${coords.length > 1 ? `<polyline fill="none" stroke="#10b981" stroke-width="2.5" points="${poly}" />` : ''}
+            ${coords.map(c => `
+              <circle cx="${c.x}" cy="${c.y}" r="4" fill="#10b981" stroke="#080c14" stroke-width="1.5" />
+              <text x="${c.x}" y="${c.y - 8}" text-anchor="middle" fill="#f1f5f9" font-size="10" font-weight="bold">${c.val}</text>
+              <text x="${c.x}" y="${H - 2}" text-anchor="middle" fill="#64748b" font-size="9">${c.date}</text>
+            `).join('')}
+          </svg>
+        `;
+      }
+
+      const sSorted = [...state.stepsLog].sort((a, b) => a.date.localeCompare(b.date));
+      const last7S = sSorted.slice(-7);
+      const avg7S = last7S.length > 0 ? Math.round(last7S.reduce((s, x) => s + x.steps, 0) / last7S.length) : null;
+      document.getElementById('stat-steps-7d').textContent = avg7S !== null ? `Śr. 7d: ${avg7S.toLocaleString('pl-PL')}` : 'Śr. 7d: brak';
+      document.getElementById('chart-steps-goal-label').textContent = `${state.profile.stepsGoal.toLocaleString('pl-PL')} kroków`;
+
+      const sSvg = document.getElementById('steps-chart-svg');
+      if (last7S.length === 0) {
+        sSvg.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-500">Zapisz kroki, aby zobaczyć wykres aktywności</div>`;
+      } else {
+        const W = 420, H = 145, padB = 22, padT = 18;
+        const maxS = Math.max(state.profile.stepsGoal, ...last7S.map(s => s.steps), 1000);
+        const goalY = padT + ((maxS - state.profile.stepsGoal) / maxS) * (H - padT - padB);
+        const slotW = (W - 20) / last7S.length;
+
+        sSvg.innerHTML = `
+          <svg viewBox="0 0 ${W} ${H}" class="w-full h-full">
+            <line x1="10" y1="${goalY}" x2="${W - 10}" y2="${goalY}" stroke="#10b981" stroke-dasharray="4 4" stroke-width="1" opacity="0.7" />
+            ${last7S.map((d, idx) => {
+              const barH = Math.max(4, (d.steps / maxS) * (H - padT - padB));
+              const x = 10 + idx * slotW + slotW * 0.2;
+              const bw = slotW * 0.6;
+              const y = H - padB - barH;
+              const fill = d.steps >= state.profile.stepsGoal ? '#10b981' : '#f59e0b';
+              return `
+                <rect x="${x}" y="${y}" width="${bw}" height="${barH}" rx="4" fill="${fill}" />
+                <text x="${x + bw / 2}" y="${y - 4}" text-anchor="middle" fill="#cbd5e1" font-size="9" font-weight="bold">${(d.steps / 1000).toFixed(1)}k</text>
+                <text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle" fill="#94a3b8" font-size="9">${d.date.slice(5)}</text>
+              `;
+            }).join('')}
+          </svg>
+        `;
+      }
+
+      const sBody = document.getElementById('steps-table-body');
+      if (sSorted.length === 0) {
+        sBody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500">Brak zapisanych kroków.</td></tr>`;
+      } else {
+        sBody.innerHTML = [...sSorted].reverse().map(item => {
+          const burn = calculateStepBurn(state.profile.weight, item.steps);
+          return `
+            <tr>
+              <td class="py-2 px-2 text-slate-300">${item.date}</td>
+              <td class="py-2 px-2 font-bold text-amber-300">${item.steps.toLocaleString('pl-PL')}</td>
+              <td class="py-2 px-2 text-slate-400">~${burn} kcal</td>
+              <td class="py-2 px-2 text-right">
+                <button type="button" onclick="deleteStepsLog('${item.date}')" class="text-slate-500 hover:text-rose-400 font-bold px-1.5 cursor-pointer">×</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    // =========================================================================
+    // 8. EXPORT, IMPORT & SUMMARY COPY
+    // =========================================================================
+    function buildDaySummaryText() {
+      const d = state.activeDate;
+      const p = state.profile;
+      const meals = state.mealsByDate[d] || [];
+      const k = meals.reduce((s, m) => s + m.kcal, 0);
+      const pr = meals.reduce((s, m) => s + m.protein, 0);
+      const ca = meals.reduce((s, m) => s + m.carbs, 0);
+      const fa = meals.reduce((s, m) => s + m.fat, 0);
+      const steps = getStepsForDate(d);
+
+      const lines = meals.length > 0
+        ? meals.map(m => `  • [${m.slot}] ${m.name}: ${m.kcal} kcal (B: ${m.protein}g | W: ${m.carbs}g | T: ${m.fat}g)`).join('\n')
+        : '  • Brak wpisanych posiłków';
+
+      return [
+        `📊 PODSUMOWANIE DNIA — ${d} (${formatDatePL(d)})`,
+        `• Waga: ${p.weight.toFixed(1)} kg (cel: ${p.targetWeight.toFixed(1)} kg)`,
+        `• Kalorie: ${k} / ${p.kcalTarget} kcal (pozostało: ${p.kcalTarget - k} kcal)`,
+        `• Makro: Białko ${pr.toFixed(1)} / ${p.protTarget} g | Węgle ${ca.toFixed(1)} / ${p.carbTarget} g | Tłuszcze ${fa.toFixed(1)} / ${p.fatTarget} g`,
+        `• Kroki: ${steps.toLocaleString('pl-PL')} (~${calculateStepBurn(p.weight, steps)} kcal)`,
+        `Posiłki:`,
+        lines
+      ].join('\n');
+    }
+
+    function copyDaySummary() {
+      const text = buildDaySummaryText();
+      document.getElementById('day-summary-preview').value = text;
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('Skopiowano podsumowanie dnia do schowka!');
+      } catch (err) {
+        showToast('Skopiuj tekst z pola w zakładce Kopia Zapasowa', '⚠️');
+      }
+      document.body.removeChild(ta);
+    }
+
+    function exportJSON() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `makroflow_backup_${state.activeDate}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Wyeksportowano kopię zapasową .json!');
+    }
+
+    function importJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const parsed = JSON.parse(evt.target.result);
+          if (!parsed || typeof parsed !== 'object') throw new Error('Nieprawidłowy plik');
+          state = { ...createInitialState(), ...parsed };
+          saveState();
+          renderAll();
+          showToast('Wczytano kopię zapasową .json!');
+        } catch (err) {
+          showToast('Błąd wczytywania pliku .json', '⚠️');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function downloadIndexHTML() {
+      const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'index.html';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Pobrano samodzielny plik index.html!');
+    }
+
+    function resetAllData() {
+      localStorage.removeItem(STORAGE_KEY);
+      state = createInitialState();
+      saveState();
+      renderAll();
+      showToast('Zresetowano aplikację do stanu początkowego.');
+    }
+
+    // =========================================================================
+    // 9. MASTER RENDER & TABS
+    // =========================================================================
+    function switchTab(tabId) {
+      ['diary', 'progress', 'backup'].forEach(id => {
+        document.getElementById(`tab-${id}`).classList.toggle('hidden', id !== tabId);
+        const btn = document.getElementById(`tab-btn-${id}`);
+        btn.className = id === tabId
+          ? 'tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 transition cursor-pointer whitespace-nowrap'
+          : 'tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent transition cursor-pointer whitespace-nowrap';
+      });
+    }
+
+    function renderAll() {
+      const p = state.profile;
+      const goalNames = {
+        cut: 'Redukcja',
+        fast_cut: 'Mocna redukcja',
+        maintain: 'Utrzymanie',
+        bulk: 'Masa'
+      };
+      document.getElementById('header-goal-badge').textContent = goalNames[p.goalType] || 'Cel';
+
+      document.getElementById('quick-weight-input').value = p.weight.toFixed(1);
+      document.getElementById('target-weight-label').textContent = p.targetWeight.toFixed(1);
+      const diffW = p.weight - p.targetWeight;
+      document.getElementById('weight-diff-badge').textContent =
+        Math.abs(diffW) < 0.05 ? 'Cel osiągnięty!' : `Do celu: ${Math.abs(diffW).toFixed(1)} kg`;
+
+      const stepsToday = getStepsForDate(state.activeDate);
+      document.getElementById('quick-steps-input').value = stepsToday;
+      document.getElementById('top-steps-goal-label').textContent = p.stepsGoal.toLocaleString('pl-PL');
+
+      const { bmr, stepKcal, tdee } = calculateTDEE(p, stepsToday);
+      document.getElementById('top-bmr-val').textContent = `${bmr} kcal`;
+      document.getElementById('top-tdee-val').textContent = tdee;
+      document.getElementById('top-steps-kcal').textContent = `+${stepKcal} kcal`;
+
+      document.getElementById('top-kcal-limit').textContent = p.kcalTarget;
+      const netDelta = p.kcalTarget - tdee;
+      document.getElementById('balance-diff-badge').textContent = `${netDelta > 0 ? '+' : ''}${netDelta} kcal`;
+      document.getElementById('top-macro-split-text').innerHTML =
+        `B: <strong class="text-cyan-400">${p.protTarget}g</strong> • W: <strong class="text-amber-300">${p.carbTarget}g</strong> • T: <strong class="text-rose-300">${p.fatTarget}g</strong>`;
+
+      document.getElementById('active-date-input').value = state.activeDate;
+      document.getElementById('human-date-label').textContent = formatDatePL(state.activeDate);
+
+      const meals = state.mealsByDate[state.activeDate] || [];
+      const sumK = meals.reduce((s, m) => s + m.kcal, 0);
+      const sumP = meals.reduce((s, m) => s + m.protein, 0);
+      const sumC = meals.reduce((s, m) => s + m.carbs, 0);
+      const sumF = meals.reduce((s, m) => s + m.fat, 0);
+
+      document.getElementById('bar-kcal-val').textContent = sumK;
+      document.getElementById('bar-kcal-max').textContent = p.kcalTarget;
+      const remK = p.kcalTarget - sumK;
+      const kPill = document.getElementById('bar-kcal-pill');
+      const kFill = document.getElementById('bar-kcal-fill');
+      kFill.style.width = `${Math.min(100, (sumK / Math.max(1, p.kcalTarget)) * 100)}%`;
+
+      if (remK >= 0) {
+        kPill.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400';
+        kPill.textContent = `Pozostało ${remK} kcal`;
+        kFill.className = 'h-full bg-emerald-500 rounded-full transition-all duration-300';
+      } else {
+        kPill.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-400';
+        kPill.textContent = `Nadwyżka +${Math.abs(remK)} kcal`;
+        kFill.className = 'h-full bg-rose-500 rounded-full transition-all duration-300';
+      }
+
+      document.getElementById('bar-prot-val').textContent = sumP.toFixed(1);
+      document.getElementById('bar-prot-max').textContent = p.protTarget;
+      const remP = p.protTarget - sumP;
+      const pPill = document.getElementById('bar-prot-pill');
+      document.getElementById('bar-prot-fill').style.width = `${Math.min(100, (sumP / Math.max(1, p.protTarget)) * 100)}%`;
+      if (remP <= 0) {
+        pPill.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400';
+        pPill.textContent = 'Cel białka zaliczony!';
+      } else {
+        pPill.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300';
+        pPill.textContent = `Pozostało ${remP.toFixed(1)} g`;
+      }
+
+      document.getElementById('bar-carb-text').textContent = `${sumC.toFixed(0)} / ${p.carbTarget} g`;
+      document.getElementById('bar-carb-fill').style.width = `${Math.min(100, (sumC / Math.max(1, p.carbTarget)) * 100)}%`;
+
+      document.getElementById('bar-fat-text').textContent = `${sumF.toFixed(0)} / ${p.fatTarget} g`;
+      document.getElementById('bar-fat-fill').style.width = `${Math.min(100, (sumF / Math.max(1, p.fatTarget)) * 100)}%`;
+
+      const container = document.getElementById('logged-meals-container');
+      const slots = ['Śniadanie', 'Obiad', 'Kolacja', 'Przekąska'];
+      if (meals.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 px-4 border border-dashed border-slate-800 rounded-2xl text-slate-500 text-xs leading-relaxed">
+            Brak posiłków zapisanych na dzień <strong>${state.activeDate}</strong>.<br/>
+            Wybierz produkt z bazy po lewej lub użyj kalkulatora z etykiety.
+          </div>
+        `;
+      } else {
+        container.innerHTML = slots.map(slot => {
+          const items = meals.filter(m => m.slot === slot);
+          if (items.length === 0) return '';
+          const sKcal = items.reduce((s, m) => s + m.kcal, 0);
+          const sProt = items.reduce((s, m) => s + m.protein, 0);
+          return `
+            <div class="bg-slate-850/90 border border-slate-800 rounded-xl p-3">
+              <div class="flex justify-between items-center pb-2 mb-2 border-b border-slate-800">
+                <span class="text-xs font-extrabold text-slate-200">${slot}</span>
+                <span class="text-[11px] font-semibold text-slate-400">${sKcal} kcal • <strong class="text-cyan-400">${sProt.toFixed(1)}g B</strong></span>
+              </div>
+              <div class="space-y-1.5">
+                ${items.map(m => `
+                  <div class="flex items-center justify-between text-xs py-1">
+                    <span class="text-slate-300 truncate pr-2">${m.name}</span>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span class="text-slate-400">${m.kcal} kcal | <strong class="text-cyan-400">${m.protein}g</strong></span>
+                      <button type="button" onclick="deleteMealEntry(${m.uid})" class="text-slate-500 hover:text-rose-400 font-bold px-1.5 cursor-pointer">×</button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('logged-meals-footer').textContent =
+        `${sumK} kcal • B: ${sumP.toFixed(1)}g • W: ${sumC.toFixed(1)}g • T: ${sumF.toFixed(1)}g`;
+
+      renderFoodBank();
+      renderProgressCharts();
+      document.getElementById('day-summary-preview').value = buildDaySummaryText();
+      saveState();
+    }
+
+    let toastTimeout;
+    function showToast(msg, icon = '✓') {
+      const el = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      document.getElementById('toast-icon').textContent = icon;
+      el.classList.remove('translate-y-28', 'opacity-0');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        el.classList.add('translate-y-28', 'opacity-0');
+      }, 3000);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      const today = getTodayISO();
+      document.getElementById('wlog-date').value = today;
+      document.getElementById('slog-date').value = today;
+      renderAll();
+      if (!state.profileConfigured) {
+        openProfileModal();
+      }
+    });
+  </script>
+</body>
+</html>
